@@ -9,9 +9,12 @@ from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
 import json
 from google.auth.transport.requests import AuthorizedSession
-from pprint import pprint
+from pprint import pprint as pp
 import pickle
 import psycopg2 as pg
+import re
+import datetime
+import time
 
 from google_auth_oauthlib import flow
 from apiclient.discovery import build
@@ -47,19 +50,13 @@ def parse_google_auth(file):
   service = build('sheets', 'v4', credentials=creds)
   return service
 
-
 def open_file(service, file_id, range_string):
   request = service.spreadsheets().values().batchGet(
       spreadsheetId=SPREADSHEET_ID, ranges=range_string)
   response = request.execute()
-  savefile = open('data/{}.json'.format(range_string.lower()), 'w+')
+  filename = re.sub(r'\s+', '_', range_string.lower())
+  savefile = open('data/{}.json'.format(filename), 'w+')
   json.dump(response, savefile, indent=4, separators=[',', ': '])
-
-def run():
-  db_check()
-  service = parse_google_auth(AUTH_FILE_NAME)
-  for range_string in SHEET_NAMES:
-    open_file(service, SPREADSHEET_ID, range_string)
 
 def db_create():
   conn = pg.connect(dbname="postgres", user=PG_USER)
@@ -73,39 +70,48 @@ def db_create_tables(conn):
     date date,
     description varchar(255),
     category varchar(255),
-    amount numeric,
+    amount float,
     note varchar(255),
     account varchar(255),
     account_num varchar(255),
     institution varchar(255),
     month date,
     week date,
-    id varchar(255),
-    check_num int,
+    transaction_id varchar(255),
+    check_num varchar(255),
     full_description varchar(255),
-    added_date date
+    added_date date,
+    id serial,
+    PRIMARY KEY(id)
       );""")
+  cursor.execute("CREATE INDEX trans_index ON transactions (date, id)")
   cursor.execute("""CREATE TABLE categories (
     group_name varchar(64),
     category varchar(64),
     type varchar(64),
     report_hidden bool,
-    budget int
+    budget int,
+    id serial,
+    PRIMARY KEY(id)
   );""")
+  cursor.execute("CREATE INDEX cat_index ON categories (group_name)")
   cursor.execute(""" CREATE TABLE balance_history (
     date date,
     time timetz,
     account varchar(64),
     account_num varchar(64),
     institution varchar(64),
-    balance numeric,
+    balance float,
     month date,
     week date,
     index int,
     type varchar(64),
-    class varchar(64)
+    class varchar(64),
+    id serial,
+    PRIMARY KEY(id)
   );
   """)
+  cursor.execute("CREATE INDEX bal_index ON balance_history (date, account, account_num, type, class)")
   cursor.close()
 
 def db_check():
@@ -132,5 +138,55 @@ def db_check():
     conn.close()
     print("  done")
 
+def parse_transactions():
+  conn = pg.connect(dbname='homebudget', user=PG_USER)
+  conn.autocommit = True
+  curs = conn.cursor()
+  this_json = json.load(open("data/transactions.json"))
+  rows = this_json['valueRanges'][0]['values']
+  i = 0
+  for row in rows:
+    if i != 0:
+      # joiner = ', '
+      row[0] = pg_strptime(row[0])
+      row[3] = pg_dollars(row[3])
+      row[13] = pg_strptime(row[13])
+      # print(row)
+      rowtuple = tuple(row)
+      # print(rowtuple)
+      curs.execute("""
+        INSERT INTO transactions
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+      """, rowtuple)
+    i += 1
+
+def pg_strptime(datestring):
+  this_time = time.strptime(datestring, '%m/%d/%Y')
+  return time.strftime("%Y-%m-%d", this_time)
+
+def pg_dollars(dollarstring):
+  this_string = re.sub(r'[$,]', "", dollarstring)
+  return this_string
+   
+
+# def parse_categories():
+#   pass
+
+# def parse_balance_history():
+#   pass
+
+def parse_files_to_db():
+  parse_transactions()
+  # parse_categories()
+  # parse_balance_history()
+
+def run():
+  db_check()
+  service = parse_google_auth(AUTH_FILE_NAME)
+  for range_string in SHEET_NAMES:
+    open_file(service, SPREADSHEET_ID, range_string)
+  parse_files_to_db()
+  
 if __name__ == "__main__":
   run()
+  # parse_files_to_db()
