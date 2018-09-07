@@ -1,0 +1,27 @@
+{% extends "bootstrap/base.html" %}
+
+{% block title %}Flask Tables{% endblock %}
+
+{% block content %}
+<table class="table table-striped">
+  {% for row in table %}
+  {% if loop.index == 1 %}
+  <tr>
+    {% for cell in row %}
+    <th>
+      {{ row[loop.index] }}
+    </th>
+    {% endfor %}
+  </tr>
+  {% elif loop.index > 1 %}
+  <tr>
+    {% for cell in row %}
+    <td>
+      {{ row[loop.index] }}
+    </td>
+    {% endfor %}
+  </tr>
+  {% endif %}
+  {% endfor %}
+</table>
+{% endblock %}
