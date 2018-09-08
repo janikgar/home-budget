@@ -12,15 +12,10 @@ import time
 from google_auth_oauthlib import flow
 from apiclient.discovery import build
 
-LOG_LOCATION = "console"
-# LOG_LOCATION = "logfile"
-PG_USER = "jacob"
+import settings
+
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-SPREADSHEET_ID = '1wbnG31Z5QBm2fuyzZOY9XkSij0EERtX92wEHq9LbPiI'
-URL = 'https://sheets.googleapis.com/v4/spreadsheets/' + SPREADSHEET_ID
-SHEET_NAMES = ["Transactions", "Categories", "Balance History"]
-AUTH_FILE_NAME = 'config/oauth2.json'
-# AUTH_FILE = json.load(AUTH_FILE_NAME)['installed']
+URL = 'https://sheets.googleapis.com/v4/spreadsheets/' + settings.SPREADSHEET_ID
 
 def parse_google_auth(file):
   """
@@ -50,10 +45,10 @@ def parse_google_auth(file):
 def get_sheet_values(service, file_id):
   log("Getting sheet values:")
   return_values = []
-  for range_string in SHEET_NAMES:
+  for range_string in settings.SHEET_NAMES:
     log("\t {}... ".format(range_string), end="")
     request = service.spreadsheets().values().batchGet(
-        spreadsheetId=SPREADSHEET_ID, ranges=range_string)
+        spreadsheetId=settings.SPREADSHEET_ID, ranges=range_string)
     response = request.execute()
     values = response['valueRanges'][0]['values']
     return_values.append(values)
@@ -61,7 +56,7 @@ def get_sheet_values(service, file_id):
   return return_values
 
 def db_create():
-  conn = pg.connect(dbname="postgres", user=PG_USER)
+  conn = pg.connect(dbname="postgres", user=settings.PG_USER)
   conn.autocommit = True
   cursor = conn.cursor()
   cursor.execute("CREATE DATABASE homebudget;")
@@ -119,12 +114,12 @@ def db_create_tables(conn):
 def db_check():
   # Create DB if it doesn't exist
   try:
-    conn = pg.connect(dbname='homebudget', user=PG_USER)
+    conn = pg.connect(dbname='homebudget', user=settings.PG_USER)
     conn.autocommit = True
   except pg.OperationalError:
     log("Creating database...", end="")
     db_create()
-    conn = pg.connect(dbname='homebudget', user=PG_USER)
+    conn = pg.connect(dbname='homebudget', user=settings.PG_USER)
     conn.autocommit = True
     log("  done")
 
@@ -141,7 +136,7 @@ def db_check():
     log("  done")
 
 def db_drop():
-  conn = pg.connect(dbname="postgres", user=PG_USER)
+  conn = pg.connect(dbname="postgres", user=settings.PG_USER)
   conn.autocommit = True
   curs = conn.cursor()
   try:
@@ -183,9 +178,9 @@ def parse_transactions(transactions):
   log("done")
 
 def log(string, end="\n"):
-  if LOG_LOCATION == "console":
+  if settings.LOG_LOCATION == "console":
     print(string, end=end)
-  elif LOG_LOCATION == "logfile":
+  elif settings.LOG_LOCATION == "logfile":
     logfile = open('data/logfile.txt', 'a+')
     logfile.writelines(string + end)
     logfile.close()
@@ -237,15 +232,15 @@ def parse_balance_history(balance_history):
   log("done")
 
 def open_budget_cursor():
-  conn = pg.connect(dbname='homebudget', user=PG_USER)
+  conn = pg.connect(dbname='homebudget', user=settings.PG_USER)
   curs = conn.cursor()
   return conn, curs
 
 def update():
   db_drop()
   db_check()
-  service = parse_google_auth(AUTH_FILE_NAME)
-  transactions, categories, balance_history = get_sheet_values(service, SPREADSHEET_ID)
+  service = parse_google_auth(settings.AUTH_FILE_NAME)
+  transactions, categories, balance_history = get_sheet_values(service, settings.SPREADSHEET_ID)
   parse_transactions(transactions)
   transactions = None
   parse_categories(categories)
@@ -257,7 +252,7 @@ def run():
   pass
   
 if __name__ == "__main__":
-  if LOG_LOCATION == "logfile":
+  if settings.LOG_LOCATION == "logfile":
     logfile = open('data/logfile.txt', 'w+')
     logfile.write('')
     logfile.close()

@@ -1,6 +1,7 @@
 .vscode/
 
-config/*
+config/oauth2.json
+config/token.bin
 
 data/*
 
