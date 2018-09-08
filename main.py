@@ -72,7 +72,7 @@ def db_create_tables(conn):
     date date,
     description varchar(255),
     category varchar(128),
-    amount float,
+    amount money,
     note varchar(128),
     account varchar(255),
     account_num varchar(128),
@@ -92,7 +92,7 @@ def db_create_tables(conn):
     category varchar(128),
     type varchar(128),
     report_hidden bool,
-    budget float,
+    budget money,
     id serial,
     PRIMARY KEY(id)
   );""")
@@ -103,7 +103,7 @@ def db_create_tables(conn):
     account varchar(128),
     account_num varchar(128),
     institution varchar(128),
-    balance float,
+    balance money,
     month date,
     week date,
     index int,
