@@ -4,24 +4,21 @@
 
 {% block content %}
 <table class="table table-striped">
-  {% for row in table %}
-  {% if loop.index == 1 %}
   <tr>
-    {% for cell in row %}
+    {% for cell in headers %}
     <th>
-      {{ row[loop.index] }}
+      {{ cell }}
     </th>
     {% endfor %}
   </tr>
-  {% elif loop.index > 1 %}
+  {% for row in table %}
   <tr>
     {% for cell in row %}
     <td>
-      {{ row[loop.index] }}
+      {{ cell }}
     </td>
     {% endfor %}
   </tr>
-  {% endif %}
   {% endfor %}
 </table>
 {% endblock %}

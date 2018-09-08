@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
 import requests
-# import pandas
-# from flask import Flask, render_template
-# from flask_bootstrap import Bootstrap
 from google.oauth2 import credentials
 import sys
 import pickle
@@ -15,8 +12,8 @@ import time
 from google_auth_oauthlib import flow
 from apiclient.discovery import build
 
-# LOG_LOCATION = "console"
-LOG_LOCATION = "logfile"
+LOG_LOCATION = "console"
+# LOG_LOCATION = "logfile"
 PG_USER = "jacob"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 SPREADSHEET_ID = '1wbnG31Z5QBm2fuyzZOY9XkSij0EERtX92wEHq9LbPiI'
@@ -167,7 +164,7 @@ def pg_dollars(dollarstring):
   return this_string
 
 def parse_transactions(transactions):
-  curs = open_budget_cursor()
+  conn, curs = open_budget_cursor()
   log("Parsing transactions... ", end="")
   i = 0
   for row in transactions:
@@ -181,6 +178,7 @@ def parse_transactions(transactions):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
       """, rowtuple)
     i += 1
+  conn.commit()
   curs.close()
   log("done")
 
@@ -193,7 +191,7 @@ def log(string, end="\n"):
     logfile.close()
 
 def parse_categories(categories):
-  curs = open_budget_cursor()
+  conn, curs = open_budget_cursor()
   log("Parsing categories... ", end="")
   i = 0
   for row in categories:
@@ -213,11 +211,12 @@ def parse_categories(categories):
         VALUES (%s, %s, %s, %s, %s)
       """, rowtuple)
     i += 1
+  conn.commit()
   curs.close()
   log("done")
 
 def parse_balance_history(balance_history):
-  curs = open_budget_cursor()
+  conn, curs = open_budget_cursor()
   log("Parsing balance history... ", end="")
   i = 0
   for row in balance_history:
@@ -233,13 +232,14 @@ def parse_balance_history(balance_history):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
       """, rowtuple)
     i += 1
+  conn.commit()
   curs.close()
   log("done")
 
 def open_budget_cursor():
   conn = pg.connect(dbname='homebudget', user=PG_USER)
   curs = conn.cursor()
-  return curs
+  return conn, curs
 
 def update():
   db_drop()
