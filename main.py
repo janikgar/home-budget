@@ -6,8 +6,7 @@ import sys
 import pickle
 import psycopg2 as pg
 import re
-import datetime
-import time
+from datetime import datetime, time
 
 from google_auth_oauthlib import flow
 from apiclient.discovery import build
@@ -93,8 +92,7 @@ def db_create_tables(conn):
   );""")
   cursor.execute("CREATE INDEX cat_index ON categories (group_name)")
   cursor.execute(""" CREATE TABLE balance_history (
-    date date,
-    time timetz,
+    date timestamptz,
     account varchar(128),
     account_num varchar(128),
     institution varchar(128),
@@ -147,12 +145,23 @@ def db_drop():
     curs.close()
 
 def pg_strpdate(datestring):
-  this_date = time.strptime(datestring, '%m/%d/%Y')
-  return time.strftime("%Y-%m-%d", this_date)
+  this_date = datetime.strptime(datestring, '%m/%d/%Y')
+  # Remap dates that go back to the epoch to a sane date
+  if this_date.year < 2016:
+    this_date = datetime(2017, 6, 1)
+  return this_date.strftime("%Y-%m-%d")
 
 def pg_strptime(timestring):
-  this_time = time.strptime(timestring, '%I:%M %p')
-  return time.strftime("%T", this_time)
+  this_time = datetime.strptime(timestring, '%I:%M %p')
+  # print(type(this_time))
+  return this_time.strftime("%T")
+
+def pg_strpdatetime(datestring, timestring):
+  this_date = datetime.strptime(datestring, '%m/%d/%Y')
+  if this_date.year < 2016:
+    this_date = datetime(2017, 6, 1)
+  this_time = datetime.strptime(timestring, '%I:%M %p')
+  return datetime.combine(this_date, this_time.time())
 
 def pg_dollars(dollarstring):
   this_string = re.sub(r'[$,]', "", dollarstring)
@@ -216,15 +225,15 @@ def parse_balance_history(balance_history):
   i = 0
   for row in balance_history:
     if i != 0:
-      row[0] = pg_strpdate(row[0])
-      row[1] = pg_strptime(row[1])
-      row[5] = pg_dollars(row[5])
-      if row[8] == "":
-        row[8] = "0"
+      row[0] = pg_strpdatetime(row[0], row[1])
+      row.remove(row[1])
+      row[4] = pg_dollars(row[4])
+      if row[7] == "":
+        row[7] = "0"
       rowtuple = tuple(row)
       curs.execute("""
         INSERT INTO balance_history
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
       """, rowtuple)
     i += 1
   conn.commit()
