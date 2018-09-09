@@ -50,7 +50,7 @@ def net_worth():
 
 def balance_plot():
   balance_data = pd.read_sql("SELECT date, balance, account FROM balance_history ORDER BY account, date ASC", con=CONN)
-  grouped = balance_data.query('date > datetime.date(1971, 1, 1)').groupby('account')
+  grouped = balance_data.groupby('account')
   # grouped.iplot(kind='area', fill=True, filename='cuflinks/stacked-area')
   go_data = []
   for name, group in grouped:
