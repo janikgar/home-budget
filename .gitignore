@@ -1,8 +1,9 @@
 .vscode/
 
-config/oauth2.json
-config/token.bin
+config/
 
 data/*
 
 __pycache__/
+virtualenv/
+pip-selfcheck.json
