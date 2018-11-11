@@ -7,3 +7,5 @@ data/*
 __pycache__/
 virtualenv/
 pip-selfcheck.json
+
+**/.ipynb_checkpoints
