@@ -3,7 +3,7 @@
 import flask
 import google.oauth2.credentials
 from google_auth_oauthlib import flow
-import apiclient.discovery
+import googleapiclient.discovery
 import os
 import json
 import pandas as pd
@@ -62,7 +62,7 @@ def data():
     if 'credentials' not in flask.session:
         return flask.redirect("authorize")
     credentials = google.oauth2.credentials.Credentials(**flask.session['credentials'])
-    service = apiclient.discovery.build('sheets', 'v4', credentials=credentials)
+    service = googleapiclient.discovery.build('sheets', 'v4', credentials=credentials)
     # dfs = sheets_to_df(service, settings.SPREADSHEET_ID)
     log("Getting sheet values:")
     return_values = {}
@@ -71,11 +71,17 @@ def data():
         request = service.spreadsheets().values().get(spreadsheetId=settings.SPREADSHEET_ID, range=range_string)
         response = request.execute()
         values = response['values']
-        return_values[range_string] = pd.DataFrame(values).head().to_html()
+        this_df = pd.DataFrame(values[1:][1:], columns=values[0])
+        this_df.index(this_df.iloc[:,0])
+        return_values[range_string] = this_df.head()
         log("done")
     dfs = return_values
-    # flask.session['credentials'] = credentials
-    # print((dfs['Transactions']))
-    return dfs['Transactions']
+    flask.session['credentials'] = credentials
+    return_html = ""
+    for k, v in dfs.items():
+        return_html += "<h2>{}</h2>".format(k)
+        return_html += v.to_html()
+        return_html += "<br />"
+    return return_html
 
 app.secret_key = os.urandom(24)
