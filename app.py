@@ -7,6 +7,7 @@ import googleapiclient.discovery
 import os
 import json
 import pandas as pd
+from flask_cors import CORS
 
 from config import settings
 
@@ -14,6 +15,8 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 URL = 'https://sheets.googleapis.com/v4/spreadsheets/' + settings.SPREADSHEET_ID
 
 app = flask.Flask(__name__)
+CORS(app)
+
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 def log(x, end='\n'):
@@ -71,12 +74,12 @@ def data():
         request = service.spreadsheets().values().get(spreadsheetId=settings.SPREADSHEET_ID, range=range_string)
         response = request.execute()
         values = response['values']
-        this_df = pd.DataFrame(values[1:][1:], columns=values[0])
-        this_df.index(this_df.iloc[:,0])
+        this_df = pd.DataFrame(values, columns=values[0])
+        # this_df.set_index(this_df.columns[0], inplace=True)
         return_values[range_string] = this_df.head()
         log("done")
     dfs = return_values
-    flask.session['credentials'] = credentials
+    # flask.session['credentials'] = credentials
     return_html = ""
     for k, v in dfs.items():
         return_html += "<h2>{}</h2>".format(k)
